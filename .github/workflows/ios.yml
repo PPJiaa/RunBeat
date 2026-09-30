@@ -1,0 +1,52 @@
+name: Build RunBeat IPA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build unsigned iPhone app
+    runs-on: macos-15
+
+    defaults:
+      run:
+        working-directory: MyTry
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build for iPhone
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project RunBeat.xcodeproj \
+            -target RunBeat \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CONFIGURATION_BUILD_DIR="$PWD/build" \
+            clean build
+
+      - name: Package IPA
+        run: |
+          mkdir -p package/Payload
+          cp -R build/RunBeat.app package/Payload/RunBeat.app
+          cd package
+          /usr/bin/zip -qry RunBeat-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: RunBeat-unsigned-ipa
+          path: MyTry/package/RunBeat-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
